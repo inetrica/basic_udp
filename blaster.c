@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <limits.h>
 #include <errno.h>
+#include <time.h>
 
 void usage() {
     fprintf(stderr, "Usage: blaster -s <hostname> -p <port> -r <rate> "
@@ -70,6 +71,20 @@ void getargs(char **hostname, int *port, int *rate, int *num,
 
 }
 
+/*
+ * calculate amount of time we'll need to sleep in order to match 'rate'
+ * where rate is pkts/sec
+ * */
+struct timespec calcSleepTime(int rate){
+    const uint nsps = 1000000000; //1000000000 nanoseconds per second
+    struct timespec tspec;
+    long nanosecSleep = nsps/rate;
+    int sec = nanosecSleep/nsps;
+    tspec.tv_sec = sec;
+    tspec.tv_nsec = nanosecSleep%nsps;
+    return tspec;
+}
+
 int main(int argc, char *argv[]){
 
     char* hostName = NULL;
@@ -79,6 +94,15 @@ int main(int argc, char *argv[]){
 
     fprintf(stdout, "hostName = %s\nport = %d\nrate = %d\nnum = %d\nseq = %u\nlen = %u\necho = %d\n",
             hostName, port, rate, numPkts, seq_no, len, echo);
+
+    struct timespec ts = calcSleepTime(rate);
+    fprintf(stdout, "sleep rate is sec = %d, nano = %ld\n", (int) ts.tv_sec, ts.tv_nsec);
+
+    int i;
+    for(i = 0; i < numPkts; i++){
+        fprintf(stdout, "send a packet\n");
+        nanosleep(&ts, NULL);
+    }
 
     exit(0);
 
