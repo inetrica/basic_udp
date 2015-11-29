@@ -1,0 +1,4 @@
+#!/bin/bash
+
+make blastee
+./blastee -p 15111 -c 0

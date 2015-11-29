@@ -2,6 +2,11 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <netinet/in.h>
+
+#define MAX_LEN 50000
 
 void usage() {
     fprintf(stderr, "Usage: blastee -p <port> -c <echo>\n");
@@ -10,6 +15,11 @@ void usage() {
 
 void invalidRange(char* option){
     fprintf(stderr, "Error: Invalid range value for %s\n", option);
+    exit(1);
+}
+
+void setup_err(char* msg){
+    fprintf(stderr, msg);
     exit(1);
 }
 
@@ -37,11 +47,54 @@ void getargs(int *port, int *echo, int argc, char *argv[]){
 
 int main(int argc, char *argv[]){
 
+    //port number, echo bool, socket s
     int port, echo;
+    int s;
+
+    //stockaddr_in struct for bind this
+    //sockaddr_in struct for receiving from remote
+    //socklen_t for recvfrom()
+    struct sockaddr_in send_addr;
+    struct sockaddr_in recv_addr;
+    socklen_t recv_add_sz = sizeof(recv_addr);
+
+    //number of bytes received on return from recvfrom()
+    //+ buffer holding data received
+    int rec_size;
+    char buffer[MAX_LEN];
+
+
     getargs(&port,&echo, argc, argv);   
 
     fprintf(stdout, "port = %d\necho = %d\n",
             port, echo);
+
+
+
+    //create socket
+    if((s = socket(AF_INET, SOCK_DGRAM, 0)) < 0){
+        setup_err("Error creating socket\n");
+    }
+    
+
+    //bind socket
+    send_addr.sin_family = AF_INET;
+    send_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    send_addr.sin_port = htons(port);
+
+    if(bind(s, (struct sockaddr *) &send_addr, sizeof(send_addr)) < 0){
+        setup_err("Error binding socket\n");
+    }
+
+    while(1){
+        rec_size = recvfrom(s, buffer, MAX_LEN, 0, 
+                (struct sockaddr *) &recv_addr, &recv_add_sz);
+        if(rec_size > 0){
+            buffer[rec_size] = '\0';//append null
+            fprintf(stdout, "received \"%s\"\n", buffer);
+        }
+    }
+
 
     exit(0);
 

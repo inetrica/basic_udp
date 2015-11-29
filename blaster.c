@@ -6,6 +6,8 @@
 #include <errno.h>
 #include <time.h>
 
+#define MAX_LEN 50000
+
 void usage() {
     fprintf(stderr, "Usage: blaster -s <hostname> -p <port> -r <rate> "
     "-n <num packets> -q <seq_no> -l <length> -c <echo>\n");
@@ -57,7 +59,7 @@ void getargs(char **hostname, int *port, int *rate, int *num,
                 break;
             case 'l':
                 *length = getUint("length", optarg);
-                //if(*length < 0 || 50000 <= *length) invalidRange("length");
+                if(MAX_LEN <= *length) invalidRange("length");
                 break;
             case 'c':
                 *echo = atoi(optarg);
@@ -95,14 +97,26 @@ int main(int argc, char *argv[]){
     fprintf(stdout, "hostName = %s\nport = %d\nrate = %d\nnum = %d\nseq = %u\nlen = %u\necho = %d\n",
             hostName, port, rate, numPkts, seq_no, len, echo);
 
+    /*
+     * calculate how long we need to sleep per packet in for loop
+     */
     struct timespec ts = calcSleepTime(rate);
     fprintf(stdout, "sleep rate is sec = %d, nano = %ld\n", (int) ts.tv_sec, ts.tv_nsec);
 
+    /*
+     * for each packet, send
+     */
     int i;
     for(i = 0; i < numPkts; i++){
         fprintf(stdout, "send a packet\n");
         nanosleep(&ts, NULL);
     }
+    
+
+    int x = sizeof(char);
+    int y = sizeof(int);
+    fprintf(stdout, "size of char = %d\n", x);
+    fprintf(stdout, "size of int = %d\n", y);
 
     exit(0);
 

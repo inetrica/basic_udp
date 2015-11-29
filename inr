@@ -1,0 +1,4 @@
+#!/bin/bash
+
+make blaster
+./blaster -s hostname -p 15111 -r 10 -n 10 -q 123 -l 100 -c 0
