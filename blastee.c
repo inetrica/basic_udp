@@ -54,9 +54,9 @@ int main(int argc, char *argv[]){
     //stockaddr_in struct for bind this
     //sockaddr_in struct for receiving from remote
     //socklen_t for recvfrom()
-    struct sockaddr_in send_addr;
-    struct sockaddr_in recv_addr;
-    socklen_t recv_add_sz = sizeof(recv_addr);
+    struct sockaddr_in this_addr;
+    struct sockaddr_in that_addr;
+    socklen_t sockadd_sz = sizeof(that_addr);
 
     //number of bytes received on return from recvfrom()
     //+ buffer holding data received
@@ -78,17 +78,17 @@ int main(int argc, char *argv[]){
     
 
     //bind socket
-    send_addr.sin_family = AF_INET;
-    send_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    send_addr.sin_port = htons(port);
+    this_addr.sin_family = AF_INET;
+    this_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    this_addr.sin_port = htons(port);
 
-    if(bind(s, (struct sockaddr *) &send_addr, sizeof(send_addr)) < 0){
+    if(bind(s, (struct sockaddr *) &this_addr, sizeof(this_addr)) < 0){
         setup_err("Error binding socket\n");
     }
 
     while(1){
         rec_size = recvfrom(s, buffer, MAX_LEN, 0, 
-                (struct sockaddr *) &recv_addr, &recv_add_sz);
+                (struct sockaddr *) &that_addr, &sockadd_sz);
         if(rec_size > 0){
             buffer[rec_size] = '\0';//append null
             fprintf(stdout, "received \"%s\"\n", buffer);
