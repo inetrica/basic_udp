@@ -5,26 +5,35 @@
 #include <limits.h>
 #include <errno.h>
 #include <time.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <netinet/in.h>
+#include <netdb.h>
 
-#define MAX_LEN 50000
 
-void usage() {
+#define MAX_LEN 50010
+
+void 
+usage() {
     fprintf(stderr, "Usage: blaster -s <hostname> -p <port> -r <rate> "
     "-n <num packets> -q <seq_no> -l <length> -c <echo>\n");
     exit(1);
 }
 
-void invalidRange(char* option){
+void 
+invalidRange(char* option){
     fprintf(stderr, "Error: Invalid range value for %s\n", option);
     exit(1);
 }
 
-void setup_err(char* msg){
+void 
+err(char* msg){
     fprintf(stderr, msg);
     exit(1);
 }
 
-unsigned int getUint(char* option, char* arg){
+unsigned int 
+getUint(char* option, char* arg){
     unsigned long tmp = 0;
     errno = 0;
     tmp = strtoul(arg, NULL, 10);
@@ -36,7 +45,8 @@ unsigned int getUint(char* option, char* arg){
 
 }
 
-void getargs(char **hostname, int *port, int *rate, int *num, 
+void 
+getargs(char **hostname, int *port, int *rate, int *num, 
         uint *seq_no, uint *length, int *echo, int argc, char *argv[]){
     int a = 0;
     int c = 0;
@@ -83,7 +93,8 @@ void getargs(char **hostname, int *port, int *rate, int *num,
  * calculate amount of time we'll need to sleep in order to match 'rate'
  * where rate is pkts/sec
  * */
-struct timespec calcSleepTime(int rate){
+struct timespec 
+calcSleepTime(int rate){
     const uint nsps = 1000000000; //1000000000 nanoseconds per second
     struct timespec tspec;
     long nanosecSleep = nsps/rate;
@@ -93,7 +104,60 @@ struct timespec calcSleepTime(int rate){
     return tspec;
 }
 
-int main(int argc, char *argv[]){
+void 
+createPacket(uint seq, uint len, char data[], int type){
+    char pktType;
+    int pos = 0;
+    switch(type){
+    case 0:
+        pktType = 'D';
+        break;
+    case 1:
+        pktType = 'E';
+        break;
+    case 2:
+        pktType = 'C';
+        break;
+    default:
+        err("Invalid packet type while trying to create packet");
+    }
+
+    //indicate packet type
+    fprintf(stdout, "size of pktType char = %d\n", (int) sizeof(pktType));
+    *(data) = pktType;
+    //pos++;
+    fprintf(stdout, "seq %u and len %u\n", seq, len);
+    
+    if(sizeof(seq) != 4 || sizeof(len) != 4){
+        err("sizeof(uint) is not 4?\n");
+    }
+    memcpy(data+1, &seq, sizeof(seq));
+    //*(data + 1) = (char) seq;
+    //pos+=4;
+
+    memcpy(data+5, &len, sizeof(len));
+    //*(data+5) = (char) len;
+    //pos+=4;
+
+    int x;
+    for(x = 0; x < 9; x++){
+        fprintf(stdout, "%c ", data[x]);
+    }
+    fprintf(stdout, "\n");
+
+    int i;
+    pos = 9;
+    for(i = 0; i < len; i++){
+        data[pos] = '2';
+        pos++;
+    }
+    data[pos] = '\0';
+    return;
+
+}
+
+int 
+main(int argc, char *argv[]){
 
     //arg values
     char* hostName = NULL;
@@ -114,7 +178,7 @@ int main(int argc, char *argv[]){
     
     //number of bytes received on return from recvfrom()
     //+ buffer holding data received
-    int rec_size;
+    //int rec_size;
     char buffer[MAX_LEN];
 
     //host entry
@@ -135,35 +199,49 @@ int main(int argc, char *argv[]){
      * setup socket
      */
     if((s=socket(AF_INET, SOCK_DGRAM, 0)) < 0){
-        setup_err("error creating socket\n");       
+        err("error creating socket\n");       
     }
 
     this_addr.sin_family = AF_INET;
     this_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    this_addr.sin_port = htons(port);
+    this_addr.sin_port = htons(0);
 
     if(bind(s, (struct sockaddr *) &this_addr, sizeof(this_addr)) < 0){
-        setup_err("error binding socket\n");
+        err("error binding socket\n");
     }
 
     /*
      * get host addr
      */
-    he = gethostbyname(host);
+    he = gethostbyname(hostName);
     if(he == NULL){
-        setup_err("error finding host\n");
+        err("error finding host\n");
     }
 
     that_addr.sin_family = AF_INET;
-    that_addr.sin_addr = hp->h_addr_list[0];
+    //that_addr.sin_addr = he->h_addr_list[0];
+    memcpy(&(that_addr.sin_addr), *(he->h_addr_list), he->h_length);
     that_addr.sin_port = htons(port);
+
+    
 
     /*
      * for each packet, send
      */
-    int i;
+    int i, type;
+    type = 0;
     for(i = 0; i < numPkts; i++){
+        if(i == numPkts -1) type = 1;//end packet
         fprintf(stdout, "send a packet\n");
+        //create packet
+        createPacket(seq_no, len, buffer, type);
+        fprintf(stdout, "have packet\n%c %u %u %s\n", buffer[0], (uint) buffer[1], (uint) buffer[5], buffer+9);
+        if(sendto(s, buffer, len, 0, 
+                    (struct sockaddr *) &that_addr, sockadd_sz) < 0){
+            err("error sending packet\n");   
+        }
+        seq_no++;
+
         nanosleep(&ts, NULL);
     }
     

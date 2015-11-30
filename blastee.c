@@ -6,7 +6,7 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 
-#define MAX_LEN 50000
+#define MAX_LEN 50010
 
 void usage() {
     fprintf(stderr, "Usage: blastee -p <port> -c <echo>\n");
@@ -45,6 +45,26 @@ void getargs(int *port, int *echo, int argc, char *argv[]){
 
 }
 
+void decodePrint(char packet[], int port){
+    //0 = data
+    //1 = seq no
+    //5 = len
+    //9 = data
+    char type;
+    uint seq, len;
+    char *data = NULL;
+    type = packet[0];
+    
+    memcpy(&seq, packet + 1, sizeof(seq));
+    memcpy(&len, packet + 5, sizeof(len));
+
+    data = (packet + 9);
+    /*if(strlen(data) != len){
+        fprintf(stdout, "string lengths don't match\n");
+    }*/
+    fprintf(stdout, "ip address, port %d, size %u, seq no %u, time t, data %s\n", port, len, seq, data);
+
+}
 int main(int argc, char *argv[]){
 
     //port number, echo bool, socket s
@@ -89,9 +109,11 @@ int main(int argc, char *argv[]){
     while(1){
         rec_size = recvfrom(s, buffer, MAX_LEN, 0, 
                 (struct sockaddr *) &that_addr, &sockadd_sz);
+        fprintf(stdout, "rec_size = %d\n", rec_size);
         if(rec_size > 0){
             buffer[rec_size] = '\0';//append null
-            fprintf(stdout, "received \"%s\"\n", buffer);
+            //fprintf(stdout, "received \"%s\"\n", buffer);
+            decodePrint(buffer, port);
         }
     }
 
