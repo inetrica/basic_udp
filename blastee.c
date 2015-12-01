@@ -65,6 +65,7 @@ void decodePrint(char packet[], int port){
     fprintf(stdout, "ip address, port %d, size %u, seq no %u, time t, data %s\n", port, len, seq, data);
 
 }
+
 int main(int argc, char *argv[]){
 
     //port number, echo bool, socket s

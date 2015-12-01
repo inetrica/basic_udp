@@ -10,8 +10,9 @@
 #include <netinet/in.h>
 #include <netdb.h>
 
-
 #define MAX_LEN 50010
+#define MIN_CHAR 33
+#define MAX_CHAR 126
 
 void 
 usage() {
@@ -123,36 +124,58 @@ createPacket(uint seq, uint len, char data[], int type){
     }
 
     //indicate packet type
-    fprintf(stdout, "size of pktType char = %d\n", (int) sizeof(pktType));
+    //fprintf(stdout, "size of pktType char = %d\n", (int) sizeof(pktType));
     *(data) = pktType;
-    //pos++;
-    fprintf(stdout, "seq %u and len %u\n", seq, len);
+    //fprintf(stdout, "seq %u and len %u\n", seq, len);
     
     if(sizeof(seq) != 4 || sizeof(len) != 4){
         err("sizeof(uint) is not 4?\n");
     }
     memcpy(data+1, &seq, sizeof(seq));
-    //*(data + 1) = (char) seq;
-    //pos+=4;
-
     memcpy(data+5, &len, sizeof(len));
-    //*(data+5) = (char) len;
-    //pos+=4;
 
-    int x;
-    for(x = 0; x < 9; x++){
-        fprintf(stdout, "%c ", data[x]);
-    }
-    fprintf(stdout, "\n");
+    int char_diff = MAX_CHAR - MIN_CHAR;
 
     int i;
     pos = 9;
     for(i = 0; i < len; i++){
-        data[pos] = '2';
+        int dval = (seq + i) % char_diff;
+        data[pos] = (char) (MIN_CHAR + dval);
         pos++;
     }
+
+    fprintf(stdout, "%u\n", seq);
+    for(i = 9; i < 13; i++){
+        fprintf(stdout, "%c", data[i]);
+    }
+    fprintf(stdout, "\n");
+
     data[pos] = '\0';
     return;
+
+}
+
+void
+decodeEcho(char packet[]){
+    //make sure packet received was an echo...
+    if(packet[0] != 'C'){
+        fprintf(stdout, "received a non-echo packet\n");
+        return;
+    }
+    uint seq, len;
+    char *data = NULL;
+    int i = 0;
+    
+    memcpy(&seq, packet + 1, sizeof(seq));
+    memcpy(&len, packet + 5, sizeof(len));
+
+    data = (packet + 9);
+
+    fprintf(stdout, "echo %u\n", seq);
+    for(i = 9; i < 13; i++){
+        fprintf(stdout, "%c", packet[i]);
+    }
+    fprintf(stdout, "\n");
 
 }
 
@@ -178,8 +201,9 @@ main(int argc, char *argv[]){
     
     //number of bytes received on return from recvfrom()
     //+ buffer holding data received
-    //int rec_size;
+    int rec_size;
     char buffer[MAX_LEN];
+    char recvBuff[MAX_LEN];
 
     //host entry
     struct hostent *he;
@@ -206,7 +230,7 @@ main(int argc, char *argv[]){
     this_addr.sin_addr.s_addr = htonl(INADDR_ANY);
     this_addr.sin_port = htons(0);
 
-    if(bind(s, (struct sockaddr *) &this_addr, sizeof(this_addr)) < 0){
+    if(echo && bind(s, (struct sockaddr *) &this_addr, sizeof(this_addr)) < 0){
         err("error binding socket\n");
     }
 
@@ -235,21 +259,27 @@ main(int argc, char *argv[]){
         fprintf(stdout, "send a packet\n");
         //create packet
         createPacket(seq_no, len, buffer, type);
-        fprintf(stdout, "have packet\n%c %u %u %s\n", buffer[0], (uint) buffer[1], (uint) buffer[5], buffer+9);
+        //fprintf(stdout, "have packet\n%c %u %u %s\n", buffer[0], (uint) buffer[1], (uint) buffer[5], buffer+9);
+        //send the packet
         if(sendto(s, buffer, len, 0, 
                     (struct sockaddr *) &that_addr, sockadd_sz) < 0){
             err("error sending packet\n");   
         }
+
+        if(echo){
+            rec_size = recvfrom(s, recvBuff, MAX_LEN, 0, (struct sockaddr *) &that_addr, &sockadd_sz);
+            if(rec_size > 0){
+                recvBuff[rec_size] = '\0';
+                decodeEcho(recvBuff);
+            }
+        }
+        //increment seq_no
         seq_no++;
 
+        //sleep to match rate
         nanosleep(&ts, NULL);
     }
     
-
-    int x = sizeof(char);
-    int y = sizeof(int);
-    fprintf(stdout, "size of char = %d\n", x);
-    fprintf(stdout, "size of int = %d\n", y);
 
     exit(0);
 

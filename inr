@@ -1,4 +1,4 @@
 #!/bin/bash
 
 make blaster
-./blaster -s macaroni-06.cs.wisc.edu -p 15111 -r 10 -n 10 -q 123 -l 100 -c 0
+./blaster -s galapagos-25.cs.wisc.edu -p 15111 -r 10 -n 10 -q 123 -l 100 -c 0
