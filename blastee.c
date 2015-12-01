@@ -66,6 +66,11 @@ void decodePrint(char packet[], int port){
 
 }
 
+struct summary {
+    uint num;
+
+};
+
 int main(int argc, char *argv[]){
 
     //port number, echo bool, socket s

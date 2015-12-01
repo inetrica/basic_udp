@@ -261,6 +261,7 @@ main(int argc, char *argv[]){
         createPacket(seq_no, len, buffer, type);
         //fprintf(stdout, "have packet\n%c %u %u %s\n", buffer[0], (uint) buffer[1], (uint) buffer[5], buffer+9);
         //send the packet
+
         if(sendto(s, buffer, len, 0, 
                     (struct sockaddr *) &that_addr, sockadd_sz) < 0){
             err("error sending packet\n");   
