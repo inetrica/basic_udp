@@ -11,6 +11,7 @@
 #include <netdb.h>
 
 #define MAX_LEN 50010
+#define BILLION 1000000000
 #define MIN_CHAR 33
 #define MAX_CHAR 126
 
@@ -96,12 +97,12 @@ getargs(char **hostname, int *port, int *rate, int *num,
  * */
 struct timespec 
 calcSleepTime(int rate){
-    const uint nsps = 1000000000; //1000000000 nanoseconds per second
+    //const uint nsps = BILLION; //1000000000 nanoseconds per second
     struct timespec tspec;
-    long nanosecSleep = nsps/rate;
-    int sec = nanosecSleep/nsps;
+    long nanosecSleep = BILLION/rate;
+    int sec = nanosecSleep/BILLION;
     tspec.tv_sec = sec;
-    tspec.tv_nsec = nanosecSleep%nsps;
+    tspec.tv_nsec = nanosecSleep % BILLION;
     return tspec;
 }
 
@@ -112,7 +113,7 @@ subtract(struct timespec a, struct timespec b){
     //take time away from secs, add back to nsec
     if((b.tv_nsec - a.tv_nsec) < 0){
         tmp.tv_sec = (b.tv_sec - a.tv_sec) - 1;
-        tmp.tv_nsec = (b.tv_nsec - a.tv_nsec) + 1000000000;
+        tmp.tv_nsec = (b.tv_nsec - a.tv_nsec) + BILLION;
     } else {
         tmp.tv_sec = (b.tv_sec - a.tv_sec);
         tmp.tv_nsec = (b.tv_nsec - a.tv_nsec);
