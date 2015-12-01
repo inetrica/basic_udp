@@ -20,7 +20,7 @@ void invalidRange(char* option){
     exit(1);
 }
 
-void setup_err(char* msg){
+void err(char* msg){
     fprintf(stderr, msg);
     exit(1);
 }
@@ -113,12 +113,14 @@ timeInSec(struct timespec ts){
     return ts.tv_sec + secn;
 }
 
-void printSummary(struct summary s, struct timespec ts){
+void 
+printSummary(struct summary s, struct timespec ts){
     double duration = timeInSec(ts);
     double avgpps = s.num/duration;
     double avgbps = s.totalBytes/duration;
     fprintf(stdout, "%u packets\n%u bytes\n%G Packets/sec\n%G Bytes/sec\nduration: %G\n", s.num, s.totalBytes, avgpps, avgbps, duration);
 }
+
 
 int main(int argc, char *argv[]){
 
@@ -153,7 +155,7 @@ int main(int argc, char *argv[]){
 
     //create socket
     if((s = socket(AF_INET, SOCK_DGRAM, 0)) < 0){
-        setup_err("Error creating socket\n");
+        err("Error creating socket\n");
     }
     
 
@@ -163,7 +165,7 @@ int main(int argc, char *argv[]){
     this_addr.sin_port = htons(port);
 
     if(bind(s, (struct sockaddr *) &this_addr, sizeof(this_addr)) < 0){
-        setup_err("Error binding socket\n");
+        err("Error binding socket\n");
     }
 
     struct summary summ;
@@ -185,7 +187,20 @@ int main(int argc, char *argv[]){
 
             buffer[rec_size] = '\0';//append null
             //fprintf(stdout, "received \"%s\"\n", buffer);
-            if(decodePrint(buffer, port) > 0){
+
+            int recvtype = decodePrint(buffer, port);
+
+            if(echo){
+                buffer[0] = 'C';
+
+                if(sendto(s, buffer, rec_size, 0, 
+                    (struct sockaddr *) &that_addr, sockadd_sz) < 0){
+                    err("error sending packet\n");   
+                }
+            }
+
+            if(recvtype > 0){
+                //end packet received
                 break;
             }
         }
