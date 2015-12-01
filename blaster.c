@@ -105,6 +105,21 @@ calcSleepTime(int rate){
     return tspec;
 }
 
+struct timespec
+subtract(struct timespec a, struct timespec b){
+    struct timespec tmp;
+    //if time between nanosecs is < 0, need to
+    //take time away from secs, add back to nsec
+    if((b.tv_nsec - a.tv_nsec) < 0){
+        tmp.tv_sec = (b.tv_sec - a.tv_sec) - 1;
+        tmp.tv_nsec = (b.tv_nsec - a.tv_nsec) + 1000000000;
+    } else {
+        tmp.tv_sec = (b.tv_sec - a.tv_sec);
+        tmp.tv_nsec = (b.tv_nsec - a.tv_nsec);
+    }
+    return tmp;
+}
+
 void 
 createPacket(uint seq, uint len, char data[], int type){
     char pktType;
@@ -252,6 +267,8 @@ main(int argc, char *argv[]){
     /*
      * for each packet, send
      */
+    struct timespec start;
+    struct timespec end;
     int i, type;
     type = 0;
     for(i = 0; i < numPkts; i++){
@@ -261,11 +278,15 @@ main(int argc, char *argv[]){
         createPacket(seq_no, len, buffer, type);
         //fprintf(stdout, "have packet\n%c %u %u %s\n", buffer[0], (uint) buffer[1], (uint) buffer[5], buffer+9);
         //send the packet
-
+        clock_gettime(CLOCK_MONOTONIC, &start);
         if(sendto(s, buffer, len, 0, 
                     (struct sockaddr *) &that_addr, sockadd_sz) < 0){
             err("error sending packet\n");   
         }
+        /*if(i % 2 == 0) {
+            nanosleep(&ts, NULL);
+            nanosleep(&ts, NULL);
+        }*///testing tool
 
         if(echo){
             rec_size = recvfrom(s, recvBuff, MAX_LEN, 0, (struct sockaddr *) &that_addr, &sockadd_sz);
@@ -274,11 +295,16 @@ main(int argc, char *argv[]){
                 decodeEcho(recvBuff);
             }
         }
+        clock_gettime(CLOCK_MONOTONIC, &end);
+        struct timespec diff = subtract(start, end);
+        struct timespec tleft = subtract(diff, ts);
         //increment seq_no
         seq_no++;
 
         //sleep to match rate
-        nanosleep(&ts, NULL);
+        if((tleft.tv_sec > 0) || (tleft.tv_sec == 0 && tleft.tv_nsec > 0)){
+            nanosleep(&tleft, NULL);
+        }
     }
     
 

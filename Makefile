@@ -11,10 +11,10 @@ all: $(BR) $(BE)
 	$(CC) -c -o $@ $< $(CFLAGS)
 
 $(BR): $(BR).o 
-	$(CC) -o $@ $^ $(CFLAGS)
+	$(CC) -o $@ $^ -lrt $(CFLAGS)
 
 $(BE): $(BE).o
-	$(CC) -o $@ $^ $(CFLAGS)
+	$(CC) -o $@ $^ -lrt $(CFLAGS)
 
 clean:
 	rm -f $(EXE) *.o 
