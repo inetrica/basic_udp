@@ -160,11 +160,13 @@ createPacket(uint seq, uint len, char data[], int type){
         pos++;
     }
 
-    fprintf(stdout, "%u\n", seq);
-    for(i = 9; i < 13; i++){
-        fprintf(stdout, "%c", data[i]);
+    if(pktType == 'D'){
+        fprintf(stdout, "seq no: %u\ndata: ", seq);
+        for(i = 9; i < 13; i++){
+            fprintf(stdout, "%c", data[i]);
+        }
+        fprintf(stdout, "\n\n");
     }
-    fprintf(stdout, "\n");
 
     data[pos] = '\0';
     return;
@@ -187,11 +189,11 @@ decodeEcho(char packet[]){
 
     data = (packet + 9);
 
-    fprintf(stdout, "echo %u\n", seq);
+    fprintf(stdout, "echo: %u\nedata: ", seq);
     for(i = 9; i < 13; i++){
         fprintf(stdout, "%c", packet[i]);
     }
-    fprintf(stdout, "\n");
+    fprintf(stdout, "\n\n");
 
 }
 
@@ -225,14 +227,16 @@ main(int argc, char *argv[]){
     struct hostent *he;
 
 
+    /*
     fprintf(stdout, "hostName = %s\nport = %d\nrate = %d\nnum = %d\nseq = %u\nlen = %u\necho = %d\n",
             hostName, port, rate, numPkts, seq_no, len, echo);
+            */
 
     /*
      * calculate how long we need to sleep per packet in for loop
      */
     ts = calcSleepTime(rate);
-    fprintf(stdout, "sleep rate is sec = %d, nano = %ld\n", (int) ts.tv_sec, ts.tv_nsec);
+    //fprintf(stdout, "sleep rate is sec = %d, nano = %ld\n", (int) ts.tv_sec, ts.tv_nsec);
 
 
     /*
@@ -272,9 +276,8 @@ main(int argc, char *argv[]){
     struct timespec end;
     int i, type;
     type = 0;
-    for(i = 0; i < numPkts; i++){
-        if(i == numPkts -1) type = 1;//end packet
-        fprintf(stdout, "send a packet\n");
+    for(i = 0; i < numPkts + 1; i++){
+        if(i == numPkts) type = 1;//end packet
         //create packet
         createPacket(seq_no, len, buffer, type);
         //fprintf(stdout, "have packet\n%c %u %u %s\n", buffer[0], (uint) buffer[1], (uint) buffer[5], buffer+9);
@@ -284,23 +287,20 @@ main(int argc, char *argv[]){
                     (struct sockaddr *) &that_addr, sockadd_sz) < 0){
             err("error sending packet\n");   
         }
-        /*if(i % 2 == 0) {
-            nanosleep(&ts, NULL);
-            nanosleep(&ts, NULL);
-        }*///testing tool
-
-        if(echo){
+        
+        if(echo && type == 0){
             rec_size = recvfrom(s, recvBuff, MAX_LEN, 0, (struct sockaddr *) &that_addr, &sockadd_sz);
             if(rec_size > 0){
                 recvBuff[rec_size] = '\0';
                 decodeEcho(recvBuff);
             }
         }
+
         clock_gettime(CLOCK_MONOTONIC, &end);
         struct timespec diff = subtract(start, end);
         struct timespec tleft = subtract(diff, ts);
         //increment seq_no
-        seq_no++;
+        seq_no += len;
 
         //sleep to match rate
         if((tleft.tv_sec > 0) || (tleft.tv_sec == 0 && tleft.tv_nsec > 0)){

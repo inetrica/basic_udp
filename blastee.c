@@ -53,7 +53,7 @@ void getargs(int *port, int *echo, int argc, char *argv[]){
 }
 
 //returns 0 if Data packet, 1 if End packet, -1 if something else
-int decodePrint(char packet[], int port){
+void decodePrint(char packet[], int port){
     //0 = data
     //1 = seq no
     //5 = len
@@ -70,8 +70,8 @@ int decodePrint(char packet[], int port){
     /*if(strlen(data) != len){
         fprintf(stdout, "string lengths don't match\n");
     }*/
-    fprintf(stdout, "ip addr\n%d\n%u\n%u\ntime\n", port, len, seq);
-
+    fprintf(stdout, "ip addr = \nport = %d\nlen = %u\nseq no = %u\ntime\n", port, len, seq);
+    fprintf(stdout, "data: ");
     //print first 4 data chars
     int i;
     for(i = 0; i < 4; i++){
@@ -80,7 +80,7 @@ int decodePrint(char packet[], int port){
     fprintf(stdout, "\n\n");
 
 
-    switch(type){
+ /*   switch(type){
     case 'D':
         return 0;
     case 'E':
@@ -88,6 +88,7 @@ int decodePrint(char packet[], int port){
     default:
         return -1;
     }
+    */
 
 }
 
@@ -175,34 +176,33 @@ int main(int argc, char *argv[]){
         rec_size = recvfrom(s, buffer, MAX_LEN, 0, 
                 (struct sockaddr *) &that_addr, &sockadd_sz);
         
-        fprintf(stdout, "rec_size = %d\n", rec_size);
+        //fprintf(stdout, "rec_size = %d\n", rec_size);
         if(rec_size > 0){
-
-            if(startedReceiving == 0){
-                clock_gettime(CLOCK_MONOTONIC, &first);
-                startedReceiving = 1;
-            }
-            summ.num++;
-            summ.totalBytes += rec_size;
-
-            buffer[rec_size] = '\0';//append null
-            //fprintf(stdout, "received \"%s\"\n", buffer);
-
-            int recvtype = decodePrint(buffer, port);
-
-            if(echo){
-                buffer[0] = 'C';
-
-                if(sendto(s, buffer, rec_size, 0, 
-                    (struct sockaddr *) &that_addr, sockadd_sz) < 0){
-                    err("error sending packet\n");   
+            if(buffer[0] == 'D'){
+                if(startedReceiving == 0){
+                    clock_gettime(CLOCK_MONOTONIC, &first);
+                    startedReceiving = 1;
                 }
-            }
+                summ.num++;
+                summ.totalBytes += rec_size;
 
-            if(recvtype > 0){
-                //end packet received
+                buffer[rec_size] = '\0';//append null
+                //fprintf(stdout, "received \"%s\"\n", buffer);
+
+                decodePrint(buffer, port);
+
+                if(echo){
+                    buffer[0] = 'C';
+
+                    if(sendto(s, buffer, rec_size, 0, 
+                        (struct sockaddr *) &that_addr, sockadd_sz) < 0){
+                        err("error sending packet\n");   
+                    }
+                }   
+            } else if(buffer[0] == 'E'){
                 break;
-            }
+            } else err("invalid packet type\n");
+            
         }
     }
 
