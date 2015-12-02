@@ -5,6 +5,7 @@
 #include <time.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <arpa/inet.h>
 #include <netinet/in.h>
 
 #define MAX_LEN 50010
@@ -53,7 +54,7 @@ void getargs(int *port, int *echo, int argc, char *argv[]){
 }
 
 //returns 0 if Data packet, 1 if End packet, -1 if something else
-void decodePrint(char packet[], int port){
+void decodePrint(char packet[], int port, char ipaddr[]){
     //0 = data
     //1 = seq no
     //5 = len
@@ -70,7 +71,7 @@ void decodePrint(char packet[], int port){
     /*if(strlen(data) != len){
         fprintf(stdout, "string lengths don't match\n");
     }*/
-    fprintf(stdout, "ip addr = \nport = %d\nlen = %u\nseq no = %u\ntime\n", port, len, seq);
+    fprintf(stdout, "ip addr = %s\nport = %d\nlen = %u\nseq no = %u\ntime\n", ipaddr, port, len, seq);
     fprintf(stdout, "data: ");
     //print first 4 data chars
     int i;
@@ -128,6 +129,7 @@ int main(int argc, char *argv[]){
     //port number, echo bool, socket s
     int port, echo;
     int s;
+    char ipaddr[INET_ADDRSTRLEN];
 
     //stockaddr_in struct for bind this
     //sockaddr_in struct for receiving from remote
@@ -189,14 +191,22 @@ int main(int argc, char *argv[]){
                 buffer[rec_size] = '\0';//append null
                 //fprintf(stdout, "received \"%s\"\n", buffer);
 
-                decodePrint(buffer, port);
+
+                /*
+                 * find ip addr
+                 */
+                if(inet_ntop(AF_INET, &(that_addr.sin_addr), ipaddr, INET_ADDRSTRLEN) == NULL){
+                    fprintf(stdout, "error determining ip addr for this packet");
+                }
+
+                decodePrint(buffer, port, ipaddr);
 
                 if(echo){
                     buffer[0] = 'C';
 
                     if(sendto(s, buffer, rec_size, 0, 
                         (struct sockaddr *) &that_addr, sockadd_sz) < 0){
-                        err("error sending packet\n");   
+                        fprintf(stdout, "error sending packet\n");   
                     }
                 }   
             } else if(buffer[0] == 'E'){

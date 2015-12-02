@@ -1,4 +1,4 @@
 #!/bin/bash
 
 make blastee
-./blastee -p 15111 -c 1
+./blastee -p 15111 -c 0
