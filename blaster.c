@@ -11,7 +11,7 @@
 #include <netdb.h>
 
 #define MAX_LEN 50010
-#define BILLION 1000000000
+#define NANO 1000000000
 #define MIN_CHAR 33
 #define MAX_CHAR 126
 
@@ -97,12 +97,12 @@ getargs(char **hostname, int *port, int *rate, int *num,
  * */
 struct timespec 
 calcSleepTime(int rate){
-    //const uint nsps = BILLION; //1000000000 nanoseconds per second
+    //const uint nsps = NANO; //1000000000 nanoseconds per second
     struct timespec tspec;
-    long nanosecSleep = BILLION/rate;
-    int sec = nanosecSleep/BILLION;
+    long nanosecSleep = NANO/rate;
+    int sec = nanosecSleep/NANO;
     tspec.tv_sec = sec;
-    tspec.tv_nsec = nanosecSleep % BILLION;
+    tspec.tv_nsec = nanosecSleep % NANO;
     return tspec;
 }
 
@@ -113,7 +113,7 @@ subtract(struct timespec a, struct timespec b){
     //take time away from secs, add back to nsec
     if((b.tv_nsec - a.tv_nsec) < 0){
         tmp.tv_sec = (b.tv_sec - a.tv_sec) - 1;
-        tmp.tv_nsec = (b.tv_nsec - a.tv_nsec) + BILLION;
+        tmp.tv_nsec = (b.tv_nsec - a.tv_nsec) + NANO;
     } else {
         tmp.tv_sec = (b.tv_sec - a.tv_sec);
         tmp.tv_nsec = (b.tv_nsec - a.tv_nsec);
@@ -282,7 +282,7 @@ main(int argc, char *argv[]){
         createPacket(seq_no, len, buffer, type);
         //fprintf(stdout, "have packet\n%c %u %u %s\n", buffer[0], (uint) buffer[1], (uint) buffer[5], buffer+9);
         //send the packet
-        clock_gettime(CLOCK_MONOTONIC, &start);
+        clock_gettime(CLOCK_REALTIME, &start);
         if(sendto(s, buffer, len, 0, 
                     (struct sockaddr *) &that_addr, sockadd_sz) < 0){
             err("error sending packet\n");   
@@ -296,7 +296,7 @@ main(int argc, char *argv[]){
             }
         }
 
-        clock_gettime(CLOCK_MONOTONIC, &end);
+        clock_gettime(CLOCK_REALTIME, &end);
         struct timespec diff = subtract(start, end);
         struct timespec tleft = subtract(diff, ts);
         //increment seq_no

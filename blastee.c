@@ -9,7 +9,7 @@
 #include <netinet/in.h>
 
 #define MAX_LEN 50010
-#define BILLION 1000000000
+#define NANO 1000000000
 
 void usage() {
     fprintf(stderr, "Usage: blastee -p <port> -c <echo>\n");
@@ -54,7 +54,7 @@ void getargs(int *port, int *echo, int argc, char *argv[]){
 }
 
 //returns 0 if Data packet, 1 if End packet, -1 if something else
-void decodePrint(char packet[], int port, char ipaddr[]){
+void decodePrint(char packet[], int port, char ipaddr[], struct timespec ts){
     //0 = data
     //1 = seq no
     //5 = len
@@ -68,10 +68,14 @@ void decodePrint(char packet[], int port, char ipaddr[]){
     memcpy(&len, packet + 5, sizeof(len));
 
     data = (packet + 9);
-    /*if(strlen(data) != len){
-        fprintf(stdout, "string lengths don't match\n");
-    }*/
-    fprintf(stdout, "ip addr = %s\nport = %d\nlen = %u\nseq no = %u\ntime\n", ipaddr, port, len, seq);
+
+    //get time info for formatting
+    struct tm * tmf = localtime(&ts.tv_sec);
+    int millisec = ts.tv_nsec/1000000;
+
+    fprintf(stdout, "ip addr = %s\nport = %d\nlen = %u\nseq no = %u\ntime: ", ipaddr, port, len, seq);
+    //print time
+    fprintf(stdout, "%02d:%02d:%02d.%03d\n", tmf->tm_hour, tmf->tm_min, tmf->tm_sec, millisec);
     fprintf(stdout, "data: ");
     //print first 4 data chars
     int i;
@@ -79,17 +83,6 @@ void decodePrint(char packet[], int port, char ipaddr[]){
         fprintf(stdout, "%c", packet[9+i]);
     } 
     fprintf(stdout, "\n\n");
-
-
- /*   switch(type){
-    case 'D':
-        return 0;
-    case 'E':
-        return 1;
-    default:
-        return -1;
-    }
-    */
 
 }
 
@@ -101,7 +94,7 @@ subtract(struct timespec a, struct timespec b){
     if((b.tv_nsec - a.tv_nsec) < 0){
         //carry over
         tmp.tv_sec = (b.tv_sec - a.tv_sec) - 1;
-        tmp.tv_nsec = (b.tv_nsec - a.tv_nsec) + BILLION;
+        tmp.tv_nsec = (b.tv_nsec - a.tv_nsec) + NANO;
     } else {
         tmp.tv_sec = (b.tv_sec - a.tv_sec);
         tmp.tv_nsec = (b.tv_nsec - a.tv_nsec);
@@ -111,7 +104,7 @@ subtract(struct timespec a, struct timespec b){
 
 double
 timeInSec(struct timespec ts){
-    double secn = ts.tv_nsec/(BILLION*1.0);
+    double secn = ts.tv_nsec/(NANO*1.0);
     return ts.tv_sec + secn;
 }
 
@@ -177,12 +170,14 @@ int main(int argc, char *argv[]){
     while(1){
         rec_size = recvfrom(s, buffer, MAX_LEN, 0, 
                 (struct sockaddr *) &that_addr, &sockadd_sz);
+        clock_gettime(CLOCK_REALTIME, &last);
         
         //fprintf(stdout, "rec_size = %d\n", rec_size);
         if(rec_size > 0){
             if(buffer[0] == 'D'){
                 if(startedReceiving == 0){
-                    clock_gettime(CLOCK_MONOTONIC, &first);
+                    //clock_gettime(CLOCK_REALTIME, &first);
+                    first = last;
                     startedReceiving = 1;
                 }
                 summ.num++;
@@ -199,7 +194,7 @@ int main(int argc, char *argv[]){
                     fprintf(stdout, "error determining ip addr for this packet");
                 }
 
-                decodePrint(buffer, port, ipaddr);
+                decodePrint(buffer, port, ipaddr, last);
 
                 if(echo){
                     buffer[0] = 'C';
@@ -217,7 +212,7 @@ int main(int argc, char *argv[]){
     }
 
 
-    clock_gettime(CLOCK_MONOTONIC, &last);
+    clock_gettime(CLOCK_REALTIME, &last);
     struct timespec recvTime = subtract(first, last);
 
     printSummary(summ, recvTime);
