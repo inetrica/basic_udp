@@ -275,8 +275,19 @@ main(int argc, char *argv[]){
     struct timespec start;
     struct timespec end;
     int i, type;
+    //use fd_set and timeout to recv if need echo
+    fd_set sockets;
+    struct timeval to;
+    int sel;
+
     type = 0;
     for(i = 0; i < numPkts + 1; i++){
+        if(echo){
+            to.tv_sec = ts.tv_sec;
+            to.tv_usec = ts.tv_nsec/1000;
+            FD_ZERO(&sockets);
+            FD_SET(s, &sockets);
+        }
         if(i == numPkts) type = 1;//end packet
         //create packet
         createPacket(seq_no, len, buffer, type);
@@ -288,24 +299,35 @@ main(int argc, char *argv[]){
             err("error sending packet\n");   
         }
         
-        if(echo && type == 0){
+        sel = -1;
+        struct timespec tleft;
+        if(echo && type == 0 && (sel = select(FD_SETSIZE, &sockets, NULL, NULL, &to)) > 0){
+            
+
             rec_size = recvfrom(s, recvBuff, MAX_LEN, 0, (struct sockaddr *) &that_addr, &sockadd_sz);
             if(rec_size > 0){
                 recvBuff[rec_size] = '\0';
                 decodeEcho(recvBuff);
             }
+            //determine time left to sleep
+            tleft.tv_sec = to.tv_sec;
+            tleft.tv_nsec = to.tv_usec*1000;
+            nanosleep(&tleft, NULL);
+        } else {
+            if(sel != 0){
+                clock_gettime(CLOCK_REALTIME, &end);
+                struct timespec diff = subtract(start, end);
+                tleft = subtract(diff, ts);
+
+                //sleep to match rate
+                if((tleft.tv_sec > 0) || (tleft.tv_sec == 0 && tleft.tv_nsec > 0)){
+                    nanosleep(&tleft, NULL);
+                }
+            }
         }
 
-        clock_gettime(CLOCK_REALTIME, &end);
-        struct timespec diff = subtract(start, end);
-        struct timespec tleft = subtract(diff, ts);
-        //increment seq_no
         seq_no += len;
 
-        //sleep to match rate
-        if((tleft.tv_sec > 0) || (tleft.tv_sec == 0 && tleft.tv_nsec > 0)){
-            nanosleep(&tleft, NULL);
-        }
     }
     
 

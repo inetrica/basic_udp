@@ -141,11 +141,15 @@ int main(int argc, char *argv[]){
     struct timespec first;
     struct timespec last;
 
+    struct timeval to; //timeval for socket timeout on select 
+    fd_set sockets;
+
 
     getargs(&port,&echo, argc, argv);   
 
-    fprintf(stdout, "port = %d\necho = %d\n",
+    /*fprintf(stdout, "port = %d\necho = %d\n",
             port, echo);
+            */
 
 
 
@@ -153,7 +157,7 @@ int main(int argc, char *argv[]){
     if((s = socket(AF_INET, SOCK_DGRAM, 0)) < 0){
         err("Error creating socket\n");
     }
-    
+
 
     //bind socket
     this_addr.sin_family = AF_INET;
@@ -167,7 +171,29 @@ int main(int argc, char *argv[]){
     struct summary summ;
     summ.num = 0;
     summ.totalBytes = 0;
+
+    //use fd_set for timeouts
+
+
+    int sel;
     while(1){
+        //reset timeout to 5 seconds
+        to.tv_sec = 5;
+        to.tv_usec = 0;
+
+        if(!startedReceiving){
+            to.tv_sec = 120; //2 minute timeout if we havent started receiving yet
+        }
+
+        FD_ZERO(&sockets);
+        FD_SET(s, &sockets);
+
+        sel = select(FD_SETSIZE, &sockets, NULL, NULL, &to);
+        if(sel == 0){//timed out
+            err("Timed out\n");
+        }
+
+
         rec_size = recvfrom(s, buffer, MAX_LEN, 0, 
                 (struct sockaddr *) &that_addr, &sockadd_sz);
         clock_gettime(CLOCK_REALTIME, &last);
