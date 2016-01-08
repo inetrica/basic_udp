@@ -11,26 +11,42 @@
 #define MAX_LEN 50010
 #define NANO 1000000000
 
+/*
+ * if user runs program without specifying all args, print msg
+ */
 void usage() {
     fprintf(stderr, "Usage: blastee -p <port> -c <echo>\n");
     exit(1);
 }
 
+/*
+ * if user runs program with an arg which has an out of range value
+ * print msg
+ */
 void invalidRange(char* option){
     fprintf(stderr, "Error: Invalid range value for %s\n", option);
     exit(1);
 }
 
+/*
+ * print error msg and exit
+ */
 void err(char* msg){
     fprintf(stderr, msg);
     exit(1);
 }
 
+/*
+ * use to track metadata on data packets received
+ */
 struct summary {
-    uint num;
-    uint totalBytes;
+    uint num;               //number of packets received
+    uint totalBytes;        //number of bytes received
 };
 
+/*
+ * get/process args from cmd line when program is run
+ */
 void getargs(int *port, int *echo, int argc, char *argv[]){
     int a = 0;
     int c = 0;
@@ -62,12 +78,12 @@ void decodePrint(char packet[], int port, char ipaddr[], struct timespec ts){
     char type;
     uint seq, len;
     char *data = NULL;
-    type = packet[0];
-    
-    memcpy(&seq, packet + 1, sizeof(seq));
-    memcpy(&len, packet + 5, sizeof(len));
+    type = packet[0];  //first byte in packet specifies type of packet
 
-    data = (packet + 9);
+    memcpy(&seq, packet + 1, sizeof(seq)); //4 bytes at index 1 is sequence number
+    memcpy(&len, packet + 5, sizeof(len)); //4 bytes at index 5 is length of packet
+
+    data = (packet + 9); //bytes from index 9 is data
 
     //get time info for formatting
     struct tm * tmf = localtime(&ts.tv_sec);
@@ -86,6 +102,10 @@ void decodePrint(char packet[], int port, char ipaddr[], struct timespec ts){
 
 }
 
+/*
+ * subtract time b from time a
+ * ie return a - b in terms of time
+ */
 struct timespec
 subtract(struct timespec a, struct timespec b){
     struct timespec tmp;
@@ -102,12 +122,18 @@ subtract(struct timespec a, struct timespec b){
     return tmp;
 }
 
+/*
+ * tike timespec struct and return time in terms of seconds
+ */
 double
 timeInSec(struct timespec ts){
     double secn = ts.tv_nsec/(NANO*1.0);
     return ts.tv_sec + secn;
 }
 
+/*
+ * print a summary of data received
+ */
 void 
 printSummary(struct summary s, struct timespec ts){
     double duration = timeInSec(ts);
@@ -147,12 +173,6 @@ int main(int argc, char *argv[]){
 
     getargs(&port,&echo, argc, argv);   
 
-    /*fprintf(stdout, "port = %d\necho = %d\n",
-            port, echo);
-            */
-
-
-
     //create socket
     if((s = socket(AF_INET, SOCK_DGRAM, 0)) < 0){
         err("Error creating socket\n");
@@ -172,10 +192,7 @@ int main(int argc, char *argv[]){
     summ.num = 0;
     summ.totalBytes = 0;
 
-    //use fd_set for timeouts
-
-
-    int sel;
+    int sel; //return value from select()
     while(1){
         //reset timeout to 5 seconds
         to.tv_sec = 5;
@@ -198,11 +215,9 @@ int main(int argc, char *argv[]){
                 (struct sockaddr *) &that_addr, &sockadd_sz);
         clock_gettime(CLOCK_REALTIME, &last);
         
-        //fprintf(stdout, "rec_size = %d\n", rec_size);
         if(rec_size > 0){
             if(buffer[0] == 'D'){
                 if(startedReceiving == 0){
-                    //clock_gettime(CLOCK_REALTIME, &first);
                     first = last;
                     startedReceiving = 1;
                 }
@@ -210,19 +225,19 @@ int main(int argc, char *argv[]){
                 summ.totalBytes += rec_size;
 
                 buffer[rec_size] = '\0';//append null
-                //fprintf(stdout, "received \"%s\"\n", buffer);
 
 
                 /*
-                 * find ip addr
+                 * find ip addr of sender
                  */
                 if(inet_ntop(AF_INET, &(that_addr.sin_addr), ipaddr, INET_ADDRSTRLEN) == NULL){
                     fprintf(stdout, "error determining ip addr for this packet");
                 }
 
+                //print packet info, data
                 decodePrint(buffer, port, ipaddr, last);
 
-                if(echo){
+                if(echo){ //send a response, simply change packet type
                     buffer[0] = 'C';
 
                     if(sendto(s, buffer, rec_size, 0, 
@@ -230,7 +245,7 @@ int main(int argc, char *argv[]){
                         fprintf(stdout, "error sending packet\n");   
                     }
                 }   
-            } else if(buffer[0] == 'E'){
+            } else if(buffer[0] == 'E'){//sender done sending
                 break;
             } else err("invalid packet type\n");
             
