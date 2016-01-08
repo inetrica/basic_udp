@@ -15,6 +15,9 @@
 #define MIN_CHAR 33
 #define MAX_CHAR 126
 
+/*
+ * if user runs program without specifying all args, print msg
+ */
 void 
 usage() {
     fprintf(stderr, "Usage: blaster -s <hostname> -p <port> -r <rate> "
@@ -22,18 +25,28 @@ usage() {
     exit(1);
 }
 
+/*
+ * if user runs program with an arg which has an out of range value
+ * print msg
+ */
 void 
 invalidRange(char* option){
     fprintf(stderr, "Error: Invalid range value for %s\n", option);
     exit(1);
 }
 
+/*
+ * print error msg and exit
+ */
 void 
 err(char* msg){
     fprintf(stderr, msg);
     exit(1);
 }
 
+/*
+ * get unsigned int from string
+ */
 unsigned int 
 getUint(char* option, char* arg){
     unsigned long tmp = 0;
@@ -47,6 +60,9 @@ getUint(char* option, char* arg){
 
 }
 
+/*
+ * get/process args from cmd line when program is run
+ */
 void 
 getargs(char **hostname, int *port, int *rate, int *num, 
         uint *seq_no, uint *length, int *echo, int argc, char *argv[]){
@@ -106,6 +122,10 @@ calcSleepTime(int rate){
     return tspec;
 }
 
+/*
+ * subtract time b from time a
+ * ie return a - b in terms of time
+ */
 struct timespec
 subtract(struct timespec a, struct timespec b){
     struct timespec tmp;
@@ -121,6 +141,13 @@ subtract(struct timespec a, struct timespec b){
     return tmp;
 }
 
+/*
+ * create packet where
+ * index 0 = packet type D, E, or C
+ * index 1 = sequence number
+ * index 5 = length
+ * index 9 = data
+ */
 void 
 createPacket(uint seq, uint len, char data[], int type){
     char pktType;
@@ -173,6 +200,9 @@ createPacket(uint seq, uint len, char data[], int type){
 
 }
 
+/*
+ * print upon receipt of an echo packet
+ */
 void
 decodeEcho(char packet[]){
     //make sure packet received was an echo...
