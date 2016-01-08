@@ -1,14 +1,12 @@
-#include <stdio.h>
 #include <string.h>
-#include <stdlib.h>
 #include <unistd.h>
 #include <limits.h>
 #include <errno.h>
-#include <time.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include "util.c"
 
 #define MAX_LEN 50010
 #define NANO 1000000000
@@ -22,25 +20,6 @@ void
 usage() {
     fprintf(stderr, "Usage: blaster -s <hostname> -p <port> -r <rate> "
     "-n <num packets> -q <seq_no> -l <length> -c <echo>\n");
-    exit(1);
-}
-
-/*
- * if user runs program with an arg which has an out of range value
- * print msg
- */
-void 
-invalidRange(char* option){
-    fprintf(stderr, "Error: Invalid range value for %s\n", option);
-    exit(1);
-}
-
-/*
- * print error msg and exit
- */
-void 
-err(char* msg){
-    fprintf(stderr, msg);
     exit(1);
 }
 
@@ -120,25 +99,6 @@ calcSleepTime(int rate){
     tspec.tv_sec = sec;
     tspec.tv_nsec = nanosecSleep % NANO;
     return tspec;
-}
-
-/*
- * subtract time b from time a
- * ie return a - b in terms of time
- */
-struct timespec
-subtract(struct timespec a, struct timespec b){
-    struct timespec tmp;
-    //if time between nanosecs is < 0, need to
-    //take time away from secs, add back to nsec
-    if((b.tv_nsec - a.tv_nsec) < 0){
-        tmp.tv_sec = (b.tv_sec - a.tv_sec) - 1;
-        tmp.tv_nsec = (b.tv_nsec - a.tv_nsec) + NANO;
-    } else {
-        tmp.tv_sec = (b.tv_sec - a.tv_sec);
-        tmp.tv_nsec = (b.tv_nsec - a.tv_nsec);
-    }
-    return tmp;
 }
 
 /*
