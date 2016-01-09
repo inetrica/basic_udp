@@ -171,13 +171,13 @@ decodeEcho(char packet[]){
         return;
     }
     uint seq, len;
-    char *data = NULL;
+    //char *data = NULL;
     int i = 0;
     
     memcpy(&seq, packet + 1, sizeof(seq));
     memcpy(&len, packet + 5, sizeof(len));
 
-    data = (packet + 9);
+    //data = (packet + 9);
 
     fprintf(stdout, "echo: %u\nedata: ", seq);
     for(i = 9; i < 13; i++){

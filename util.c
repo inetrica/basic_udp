@@ -17,7 +17,7 @@ void invalidRange(char* option){
  * print error msg and exit
  */
 void err(char* msg){
-    fprintf(stderr, msg);
+    fputs(msg, stderr);
     exit(1);
 }
 

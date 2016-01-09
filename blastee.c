@@ -56,15 +56,15 @@ void decodePrint(char packet[], int port, char ipaddr[], struct timespec ts){
     //1 = seq no
     //5 = len
     //9 = data
-    char type;
+    //char type;
     uint seq, len;
-    char *data = NULL;
-    type = packet[0];  //first byte in packet specifies type of packet
+    //char *data = NULL;
+    //type = packet[0];  //first byte in packet specifies type of packet
 
     memcpy(&seq, packet + 1, sizeof(seq)); //4 bytes at index 1 is sequence number
     memcpy(&len, packet + 5, sizeof(len)); //4 bytes at index 5 is length of packet
 
-    data = (packet + 9); //bytes from index 9 is data
+    //data = (packet + 9); //bytes from index 9 is data
 
     //get time info for formatting
     struct tm * tmf = localtime(&ts.tv_sec);
